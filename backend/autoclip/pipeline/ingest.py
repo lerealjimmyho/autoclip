@@ -165,6 +165,11 @@ def _ingest_with_ytdlp(
         done = status.get("downloaded_bytes")
         if total and done:
             on_progress(min(1.0, done / total))
+            return
+        # HLS (all of Twitch) often has no byte total, but always counts fragments.
+        index, count = status.get("fragment_index"), status.get("fragment_count")
+        if index and count:
+            on_progress(min(1.0, index / count))
 
     options: dict = {
         "format": settings.ytdlp_format,

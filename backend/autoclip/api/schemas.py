@@ -60,6 +60,18 @@ class UrlIngestIn(BaseModel):
 YouTubeIngestIn = UrlIngestIn
 
 
+class DownloadOut(BaseModel):
+    """A URL download in flight, polled by the UI for progress."""
+
+    id: str
+    url: str
+    status: Literal["running", "done", "failed"]
+    #: 0..1, or None until yt-dlp reports a size or fragment count.
+    progress: float | None = None
+    source: SourceOut | None = None
+    error: dict[str, str] | None = None
+
+
 class JobSettingsIn(BaseModel):
     """Per-job overrides. Anything omitted falls back to saved settings."""
 

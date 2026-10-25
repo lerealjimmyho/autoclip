@@ -174,3 +174,24 @@ class TestMigrationV2:
         with conn:
             conn.execute("DELETE FROM sources WHERE id = 's1'")
         assert conn.execute("SELECT COUNT(*) FROM jobs").fetchone()[0] == 0
+
+
+class TestProgress:
+    def test_hls_fragment_counts_drive_progress(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        class Downloading(_FakeYoutubeDL):
+            def process_ie_result(self, info: dict, download: bool = True) -> dict:
+                hook = self.options["progress_hooks"][0]
+                # Twitch HLS: no byte total, just fragment counters.
+                hook({"status": "downloading", "fragment_index": 25, "fragment_count": 100})
+                hook({"status": "downloading", "downloaded_bytes": 50, "total_bytes": 100})
+                return info
+
+        monkeypatch.setattr(Downloading, "resolved", {"is_live": False})
+        monkeypatch.setattr(yt_dlp, "YoutubeDL", Downloading)
+        seen: list[float] = []
+
+        # The fake writes no file, so ingest ends in an error after the hooks ran.
+        with pytest.raises(ingest.IngestError, match="no media file"):
+            ingest.ingest_twitch("https://www.twitch.tv/videos/1", on_progress=seen.append)
+
+        assert seen == [0.25, 0.5]
