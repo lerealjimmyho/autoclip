@@ -51,9 +51,13 @@ class SourceOut(BaseModel):
         )
 
 
-class YouTubeIngestIn(BaseModel):
+class UrlIngestIn(BaseModel):
     url: str
     cookies_from_browser: str | None = None
+
+
+#: The original YouTube-only endpoint's body; same shape.
+YouTubeIngestIn = UrlIngestIn
 
 
 class JobSettingsIn(BaseModel):

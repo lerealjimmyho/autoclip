@@ -171,6 +171,36 @@ class TestSources:
 
         assert response.status_code == 400
 
+    def test_youtube_endpoint_still_rejects_twitch(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/sources/youtube", json={"url": "https://www.twitch.tv/videos/1"}
+        )
+
+        assert response.status_code == 400
+
+    def test_url_endpoint_rejects_unsupported_hosts(self, client: TestClient) -> None:
+        response = client.post("/api/sources/url", json={"url": "https://vimeo.com/12345"})
+
+        assert response.status_code == 400
+
+    def test_url_endpoint_ingests_twitch(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from autoclip.db.models import new_id
+        from autoclip.pipeline import ingest
+
+        def fake_ingest(url: str, settings: object) -> Source:
+            return Source(id=new_id(), type="twitch", url=url, path="C:/media/vod.mp4", title="VOD")
+
+        monkeypatch.setattr(ingest, "ingest_url", fake_ingest)
+        response = client.post(
+            "/api/sources/url", json={"url": "https://www.twitch.tv/videos/2345678901"}
+        )
+
+        assert response.status_code == 201
+        assert response.json()["type"] == "twitch"
+        assert client.get("/api/sources").json()[0]["title"] == "VOD"
+
     def test_unsupported_upload_type_is_rejected(self, client: TestClient) -> None:
         response = client.post(
             "/api/sources/upload",
