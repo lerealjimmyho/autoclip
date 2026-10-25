@@ -235,6 +235,12 @@ export const api = {
       body: JSON.stringify({ url, cookies_from_browser: cookiesFromBrowser || null }),
     }),
 
+  ingestUrl: (url: string, cookiesFromBrowser?: string) =>
+    request<Source>('/api/sources/url', {
+      method: 'POST',
+      body: JSON.stringify({ url, cookies_from_browser: cookiesFromBrowser || null }),
+    }),
+
   uploadSource: (file: File) => {
     const form = new FormData()
     form.append('file', file)

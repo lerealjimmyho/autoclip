@@ -13,7 +13,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from ..config import load as load_settings
 from ..db import store
 from ..pipeline import ingest
-from .schemas import SourceOut, YouTubeIngestIn
+from .schemas import SourceOut, UrlIngestIn, YouTubeIngestIn
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +43,18 @@ async def ingest_youtube(payload: YouTubeIngestIn) -> SourceOut:
     """Download a YouTube video and register it as a source."""
     if not ingest.is_youtube_url(payload.url):
         raise HTTPException(status_code=400, detail="That is not a YouTube URL.")
+    return await _ingest_url(payload)
 
+
+@router.post("/url", response_model=SourceOut, status_code=201)
+async def ingest_url(payload: UrlIngestIn) -> SourceOut:
+    """Download a YouTube or Twitch video and register it as a source."""
+    if not ingest.is_supported_url(payload.url):
+        raise HTTPException(status_code=400, detail="That is not a YouTube or Twitch URL.")
+    return await _ingest_url(payload)
+
+
+async def _ingest_url(payload: UrlIngestIn) -> SourceOut:
     settings = load_settings().ingest
     if payload.cookies_from_browser is not None:
         settings = settings.model_copy(
@@ -51,7 +62,7 @@ async def ingest_youtube(payload: YouTubeIngestIn) -> SourceOut:
         )
 
     try:
-        source = await asyncio.to_thread(ingest.ingest_youtube, payload.url, settings)
+        source = await asyncio.to_thread(ingest.ingest_url, payload.url, settings)
     except ingest.IngestError as exc:
         # 422 rather than 500: the request was well-formed, but the content
         # can't be fetched, and the hint tells the user what to change.
